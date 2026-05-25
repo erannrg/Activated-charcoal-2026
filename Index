@@ -128,32 +128,46 @@ function updateFormulations() {
 
 function calculate() {
     const res = document.getElementById('result');
+    
+    // 1. Mandatory Safety Checks
     if(!document.getElementById('c1').checked || !document.getElementById('c2').checked) {
         res.innerHTML = "Not recommended (Safety checks failed)";
         res.style.display = "block"; return;
     }
+    
+    // Get inputs
     const drug = JSON.parse(document.getElementById('formSelect').value);
     const h = parseFloat(document.getElementById('hours').value);
     const dVal = parseFloat(document.getElementById('doseInput').value);
 
+    // Helper to check if a string is a numeric range like "0-2"
+    function isInRange(timeStr, hours) {
+        if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes('-')) return false;
+        const [start, end] = timeStr.split('-').map(Number);
+        return hours >= start && hours <= end;
+    }
+
     let output = "Recommendation: ";
     
-    // Time Logic
-    let [s1, s2] = drug.StrongTime.split('-').map(Number);
-    let [w1, w2] = drug.WeakTime.split('-').map(Number);
-
-    if (h >= s1 && h <= s2) {
+    // 2. Time/Recommendation Logic
+    if (isInRange(drug.StrongTime, h)) {
         output += "Activated Charcoal Recommended – Strong";
+        // ADAC Check
         if (dVal > parseFloat(drug.ADAC)) output += "<br>Additional dose activated charcoal Recommended (Strong)";
-    } else if (h >= w1 && h <= w2) {
+    } 
+    else if (isInRange(drug.WeakTime, h)) {
         output += "Activated Charcoal Recommended – Weak";
+        // ADAC Check
         if (dVal > parseFloat(drug.ADAC)) output += "<br>Additional dose activated charcoal Recommended (Weak)";
-    } else {
+    } 
+    else {
         output += "Not Recommended";
     }
 
     res.innerHTML = output;
     res.style.display = "block";
+}
+
 }
 </script>
 </body>
