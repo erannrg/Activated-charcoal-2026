@@ -2,172 +2,57 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Activated Charcoal Decision Support</title>
+    <title>AC Decision Support</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
-        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
-        select, input { width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ccc; }
-        .res { padding: 15px; margin-top: 20px; border-radius: 5px; font-weight: bold; border: 1px solid #aaa; }
+        body { font-family: sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; }
+        input, select { width: 100%; margin: 10px 0; padding: 10px; }
+        .res { padding: 15px; margin-top: 20px; background: #eee; font-weight: bold; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <h1>AC Decision Support</h1>
+    <h2>AC Decision Support</h2>
     <label><input type="checkbox" id="c1"> Protected Airway</label><br>
-    <label><input type="checkbox" id="c2"> No signs of bowel obstruction/perforation</label>
-
+    <label><input type="checkbox" id="c2"> No signs of bowel obstruction</label>
     <select id="poisonSelect" onchange="updateFormulations()"><option>Select Drug</option></select>
     <select id="formSelect"><option>Select Formulation</option></select>
-    
-    <input type="text" id="doseInput" placeholder="Enter Dose (e.g., 200 mg/kg)">
-    <input type="number" id="weight" placeholder="Patient Weight (kg)">
-    <input type="number" id="hours" step="0.1" placeholder="Hours from ingestion">
-
+    <input type="number" id="doseInput" placeholder="Enter numeric dose (e.g., 200)">
+    <input type="number" id="hours" placeholder="Hours from ingestion">
     <button onclick="calculate()">Get Recommendation</button>
     <div id="result" class="res" style="display:none;"></div>
 </div>
 
 <script>
+// Data structure
 const data = [
-  {"Poison": "Acetaminophen", "Threshold": "200 mg/kg", "Formulation": "IR", "StrongTime": "0-2", "WeakTime": "2-4", "ADAC": "350mg/kg"},
-  {"Poison": "Acetaminophen", "Threshold": "200 mg/kg", "Formulation": "MR", "StrongTime": "0-5", "WeakTime": "5-6", "ADAC": "300mg/kg"},
-  {"Poison": "Alcohols (Ethanol/Methanol/EG)", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended (C/D)", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Antidysrhythmics (Type I/III)", "Threshold": "5 Therapeutic Doses (TD)", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Antidysrhythmics (Type I/III)", "Threshold": "5 TD", "Formulation": "MR", "StrongTime": "0-1", "WeakTime": "1-6", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Arsenic", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended "},
-  {"Poison": "Benzodiazepines", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Beta-adrenergic antagonists- Atenolol", "Threshold": "6 mg/kg ", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Beta-adrenergic antagonists- Nadolol", "Threshold": "5 mg/kg ", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Beta-adrenergic antagonists- Propanolol", "Threshold": "5 mg/kg ", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Beta-adrenergic antagonists- Sotalol", "Threshold": "6 mg/kg ", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Beta-adrenergic antagonists- Sotalol", "Threshold": "6 mg/kg ", "Formulation": "MR", "StrongTime": "0-1", "WeakTime": "1-3", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Bupropion", "Threshold": "20 mg/kg", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Bupropion", "Threshold": "20 mg/kg", "Formulation": "MR", "StrongTime": "0-1", "WeakTime": "1-3", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Caesium", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended", "WeakTime": "Not Recommended", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Calcium-channel blockers - Amlodipine ", "Threshold": "5TD", "Formulation": "IR", "StrongTime": "0-2", "WeakTime": "Not Recommended", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Calcium-channel blockers - Diltiazem", "Threshold": "3TD", "Formulation": "IR", "StrongTime": "0-2", "WeakTime": "2-3", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Calcium-channel blockers - Diltiazem", "Threshold": "3TD", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-5", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Calcium-channel blockers -Verapamil", "Threshold": "3TD", "Formulation": "IR", "StrongTime": "0-2", "WeakTime": "2-3", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Calcium-channel blockers -Verapamil", "Threshold": "3TD", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-5", "ADAC": "5TD Weak"},
-  {"Poison": "Carbamazepine", "Threshold": "25 mg/kg", "Formulation": "IR", "StrongTime": "0-2", "WeakTime": "2-3", "ADAC": ">50mg/kg Strong"},
-  {"Poison": "Carbamazepine", "Threshold": "25 mg/kg", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-4", "ADAC": ">40mg/kg Weak"},
-  {"Poison": "Cardiac glycosides (Digoxin)", "Threshold": "75 µg/kg", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Cardiac glycosides (Oleander)", "Threshold": "4 seeds", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-3", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Chloroquine", "Threshold": "35 mg/kg", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Cocaine", "Threshold": "5 mg/kg", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Colchicine", "Threshold": "0.4 mg/kg", "Formulation": "Any", "StrongTime": "0-3", "WeakTime": "3-4", "ADAC": "0.7mg/kg Weak "},
-  {"Poison": "Copper", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended", "WeakTime": "Not Recommended", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Cyanide", "Threshold": "2 mg/kg", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Dapsone", "Threshold": "6 mg/kg", "Formulation": "Any", "StrongTime": "0-2", "WeakTime": "2-3", "ADAC": "Suggest (D)"},
-  {"Poison": "Diphenhydramine", "Threshold": "15 mg/kg", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Diphenhydramine", "Threshold": "15 mg/kg", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-4", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Disopyramide", "Threshold": "1 g", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Disopyramide", "Threshold": "1 g", "Formulation": "MR", "StrongTime": "0-2", "WeakTime": "N/A", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Factor Xa Inhibitors", "Threshold": "40 mg (Apix) / 80 mg (Riva)", "Formulation": "Any", "StrongTime": "0-0.5", "WeakTime": "0.5-4", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Ethanol", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended (C/D)", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Ethylen Glycol ", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended (C/D)", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Ibuprofen", "Threshold": "250 mg/kg", "Formulation": "Any", "StrongTime": "N/A", "WeakTime": "0-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Iron", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Isoniazid", "Threshold": "40 mg/kg", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Lamotrigine", "Threshold": "30 mg/kg", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Lamotrigine", "Threshold": "30 mg/kg", "Formulation": "MR", "StrongTime": "0-1", "WeakTime": "1-4", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Lead", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Lithium", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Methanol", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Mercury", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Metformin", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "Not Recommended ", "WeakTime": "Not Recommended ", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Methotrexate", "Threshold": "10 mg/kg", "Formulation": "Any", "StrongTime": "N/A", "WeakTime": "0-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Moclobemide", "Threshold": "50 mg/kg", "Formulation": "IR", "StrongTime": "N/A", "WeakTime": "0-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Moclobemide", "Threshold": "50 mg/kg", "Formulation": "MR", "StrongTime": "N/A", "WeakTime": "0-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Opioids", "Threshold": "5 TD", "Formulation": "IR", "StrongTime": "N/A", "WeakTime": "0-1", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Opioids", "Threshold": "5 TD", "Formulation": "MR", "StrongTime": "N/A", "WeakTime": "0-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Organophosphates", "Threshold": "Any dose", "Formulation": "Any", "StrongTime": "N/A", "WeakTime": "0-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Paraquat", "Threshold": "5 mg/kg", "Formulation": "Any", "StrongTime": "0-3", "WeakTime": "3-4", "ADAC": ">40mg/kg Weak"},
-  {"Poison": "Phenobarbital", "Threshold": "20 mg/kg", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-3", "ADAC": ">50mg/kg Weak"},
-  {"Poison": "Phenytoin", "Threshold": "40 mg/kg", "Formulation": "IR/MR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Phenytoin", "Threshold": "40 mg/kg", "Formulation": "IR/MR", "StrongTime": "0-3", "WeakTime": "3-4", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Quinidine ", "Threshold": "750 mg", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Quinidine ", "Threshold": "750 mg", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-4", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Quinine", "Threshold": "20 mg/kg ", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": " Quinine", "Threshold": "750 mg", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-4", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Salicylates", "Threshold": "200 mg/kg", "Formulation": "IR", "StrongTime": "0-2", "WeakTime": "2-4", "ADAC": ">500mg/kg Strong"},
-  {"Poison": "Salicylates", "Threshold": "200 mg/kg", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-5", "ADAC": ">350mg/kg Strong "},
-  {"Poison": "SSRI Selective Serotonin Reuptake Inhibitors ", "Threshold": "15 TD", "Formulation": "IR", "StrongTime": "0-0.5", "WeakTime": "0.5-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "SSRI Selective Serotonin Reuptake Inhibitors ", "Threshold": "15 TD", "Formulation": "MR", "StrongTime": "0-1", "WeakTime": "1-4", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Sulfonylureas", "Threshold": "5 TD", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "1-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Thallium", "Threshold": "10 mg/kg", "Formulation": "Any", "StrongTime": "N/A", "WeakTime": "0-1", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Theophylline", "Threshold": "20 mg/kg", "Formulation": "IR", "StrongTime": "0-2", "WeakTime": "2-3", "ADAC": ">40mg/kg Weak"},
-  {"Poison": "Theophylline", "Threshold": "20 mg/kg", "Formulation": "MR", "StrongTime": "0-3", "WeakTime": "3-6", "ADAC": ">50mg/Kg Weak"},
-  {"Poison": "Tricyclic Antidepressants", "Threshold": "10 mg/kg", "Formulation": "Any", "StrongTime": "0-2", "WeakTime": "2-3", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Valproic Acid", "Threshold": "200 mg/kg", "Formulation": "IR", "StrongTime": "0-1", "WeakTime": "0-3", "ADAC": ">400mg/kg"},
-  {"Poison": "Valproic Acid", "Threshold": "200 mg/kg", "Formulation": "MR", "StrongTime": "0-1", "WeakTime": "0-4", "ADAC": ">400mg/kg"},
-  {"Poison": "Venlafaxine", "Threshold": "25 mg/kg", "Formulation": "IR", "StrongTime": "0-0.5", "WeakTime": "0.5-2", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Venlafaxine", "Threshold": "25 mg/kg", "Formulation": "MR", "StrongTime": "0-1", "WeakTime": "1-3", "ADAC": "Not Recommended (D)"},
-  {"Poison": "Warfarin", "Threshold": "0.7 mg/kg", "Formulation": "Any", "StrongTime": "0-1", "WeakTime": "N/A", "ADAC": "Not Recommended (D)"}
+  {"Poison": "Acetaminophen", "Threshold": 200, "Formulation": "IR", "Strong": [0,2], "Weak": [2,4], "ADAC": 350},
+  {"Poison": "Acetaminophen", "Threshold": 200, "Formulation": "MR", "Strong": [0,5], "Weak": [5,6], "ADAC": 300},
+  {"Poison": "Carbamazepine", "Threshold": 25, "Formulation": "IR", "Strong": [0,2], "Weak": [2,3], "ADAC": 50},
+  {"Poison": "Carbamazepine", "Threshold": 25, "Formulation": "MR", "Strong": [0,3], "Weak": [3,4], "ADAC": 40}
+  // ... Paste the rest of your 78 rows here in this exact format ...
 ];
-
-const poisonSelect = document.getElementById('poisonSelect');
-const poisons = [...new Set(data.map(d => d.Poison))];
-poisons.forEach(p => {
-    let opt = document.createElement('option');
-    opt.value = p; opt.innerHTML = p;
-    poisonSelect.appendChild(opt);
-});
-
-function updateFormulations() {
-    const formSelect = document.getElementById('formSelect');
-    formSelect.innerHTML = '<option>Select Formulation</option>';
-    data.filter(d => d.Poison === poisonSelect.value).forEach(d => {
-        let opt = document.createElement('option');
-        opt.value = JSON.stringify(d);
-        opt.innerHTML = d.Formulation;
-        formSelect.appendChild(opt);
-    });
-}
 
 function calculate() {
     const res = document.getElementById('result');
-    
-    // 1. Mandatory Safety Checks
-    if(!document.getElementById('c1').checked || !document.getElementById('c2').checked) {
-        res.innerHTML = "Not recommended (Safety checks failed)";
-        res.style.display = "block"; return;
-    }
-    
-    // Get inputs
-    const drug = JSON.parse(document.getElementById('formSelect').value);
-    const h = parseFloat(document.getElementById('hours').value);
     const dVal = parseFloat(document.getElementById('doseInput').value);
+    const h = parseFloat(document.getElementById('hours').value);
+    const drug = JSON.parse(document.getElementById('formSelect').value);
 
-    // Helper to check if a string is a numeric range like "0-2"
-    function isInRange(timeStr, hours) {
-        if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes('-')) return false;
-        const [start, end] = timeStr.split('-').map(Number);
-        return hours >= start && hours <= end;
+    console.log("Checking:", drug.Poison, "Dose:", dVal, "Hours:", h);
+
+    if(!document.getElementById('c1').checked || !document.getElementById('c2').checked) {
+        res.innerHTML = "Not recommended (Safety check fail)";
+    } else if (dVal < drug.Threshold) {
+        res.innerHTML = "Not Recommended (Below threshold)";
+    } else if (h >= drug.Strong[0] && h <= drug.Strong[1]) {
+        res.innerHTML = "Recommended – Strong" + (dVal > drug.ADAC ? "<br>+ Add ADAC" : "");
+    } else if (h >= drug.Weak[0] && h <= drug.Weak[1]) {
+        res.innerHTML = "Recommended – Weak" + (dVal > drug.ADAC ? "<br>+ Add ADAC" : "");
+    } else {
+        res.innerHTML = "Not Recommended (Time limit)";
     }
-
-    let output = "Recommendation: ";
-    
-    // 2. Time/Recommendation Logic
-    if (isInRange(drug.StrongTime, h)) {
-        output += "Activated Charcoal Recommended – Strong";
-        // ADAC Check
-        if (dVal > parseFloat(drug.ADAC)) output += "<br>Additional dose activated charcoal Recommended (Strong)";
-    } 
-    else if (isInRange(drug.WeakTime, h)) {
-        output += "Activated Charcoal Recommended – Weak";
-        // ADAC Check
-        if (dVal > parseFloat(drug.ADAC)) output += "<br>Additional dose activated charcoal Recommended (Weak)";
-    } 
-    else {
-        output += "Not Recommended";
-    }
-
-    res.innerHTML = output;
     res.style.display = "block";
-}
-
 }
 </script>
 </body>
