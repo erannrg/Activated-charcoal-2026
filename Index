@@ -1,71 +1,710 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Activated Charcoal Decision Support</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
-        .container { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input, select, button { width: 100%; margin: 10px 0; padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        #result { padding: 15px; margin-top: 20px; font-weight: bold; border-radius: 4px; display: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activated Charcoal Decision Support</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, #1a365d, #2b6cb0);
+    color: white;
+    padding: 18px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 1.4em; font-weight: 700; letter-spacing: 0.5px; }
+  header p { font-size: 0.78em; margin-top: 4px; opacity: 0.85; }
+
+  .warning-banner {
+    background: #fff3cd;
+    border-left: 5px solid #f6ad55;
+    color: #7b341e;
+    padding: 10px 18px;
+    font-size: 0.82em;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .container { max-width: 720px; margin: 22px auto; padding: 0 14px 40px; }
+
+  .card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    padding: 20px 22px;
+    margin-bottom: 18px;
+  }
+  .card h2 {
+    font-size: 1em;
+    font-weight: 700;
+    color: #2b6cb0;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #ebf4ff;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card h2 .badge {
+    background: #2b6cb0; color: white;
+    font-size: 0.75em; border-radius: 50%;
+    width: 22px; height: 22px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Safety checks */
+  .safety-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.2s;
+  }
+  .safety-row:hover { border-color: #2b6cb0; background: #ebf8ff; }
+  .safety-row.checked { border-color: #38a169; background: #f0fff4; }
+  .safety-row input[type=checkbox] { width: 20px; height: 20px; accent-color: #38a169; flex-shrink: 0; margin-top: 1px; cursor: pointer; }
+  .safety-row label { font-size: 0.9em; font-weight: 600; cursor: pointer; line-height: 1.4; }
+  .safety-row .sub { font-size: 0.75em; color: #718096; font-weight: 400; }
+
+  /* Form fields */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.82em; font-weight: 700; color: #4a5568; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .field select, .field input[type=number] {
+    width: 100%; padding: 9px 12px; border: 2px solid #e2e8f0;
+    border-radius: 7px; font-size: 0.92em; background: white;
+    transition: border-color 0.2s; appearance: none; -webkit-appearance: none;
+  }
+  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%234a5568' d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .field select:focus, .field input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(43,108,176,0.12); }
+
+  .dose-row { display: flex; gap: 10px; }
+  .dose-row .field:first-child { flex: 2; }
+  .dose-row .field:last-child { flex: 1; }
+
+  /* Result panel */
+  #result-panel { display: none; }
+  .result-box {
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    border-left: 5px solid;
+  }
+  .result-box.not-rec { background: #fff5f5; border-color: #e53e3e; }
+  .result-box.strong { background: #f0fff4; border-color: #38a169; }
+  .result-box.weak { background: #ebf8ff; border-color: #3182ce; }
+  .result-box.adac-yes { background: #ebf4ff; border-color: #2b6cb0; }
+  .result-box.adac-no { background: #f7fafc; border-color: #a0aec0; }
+
+  .result-box .label { font-size: 0.72em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; opacity: 0.7; }
+  .result-box .value { font-size: 1.05em; font-weight: 700; }
+  .result-box .detail { font-size: 0.8em; margin-top: 5px; opacity: 0.8; }
+
+  .not-rec .label { color: #c53030; }
+  .not-rec .value { color: #c53030; }
+  .strong .label { color: #276749; }
+  .strong .value { color: #276749; }
+  .weak .label { color: #2c5282; }
+  .weak .value { color: #2c5282; }
+  .adac-yes .label { color: #2c5282; }
+  .adac-yes .value { color: #2c5282; }
+  .adac-no .value { color: #4a5568; }
+
+  .btn-eval {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, #1a365d, #2b6cb0);
+    color: white; border: none; border-radius: 8px;
+    font-size: 1em; font-weight: 700; cursor: pointer;
+    letter-spacing: 0.5px; transition: opacity 0.2s;
+    margin-top: 4px;
+  }
+  .btn-eval:hover { opacity: 0.9; }
+
+  .btn-reset {
+    width: 100%; padding: 10px;
+    background: white; color: #4a5568;
+    border: 2px solid #e2e8f0; border-radius: 8px;
+    font-size: 0.88em; font-weight: 600; cursor: pointer;
+    margin-top: 8px; transition: all 0.2s;
+  }
+  .btn-reset:hover { border-color: #2b6cb0; color: #2b6cb0; }
+
+  .info-tag { display: inline-block; background: #ebf4ff; color: #2c5282; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 700; margin-left: 6px; }
+
+  .drug-info-bar {
+    background: #f7fafc; border: 1px solid #e2e8f0;
+    border-radius: 7px; padding: 8px 12px; margin-bottom: 14px;
+    font-size: 0.8em; color: #4a5568; display: none;
+  }
+  .drug-info-bar span { font-weight: 700; color: #2b6cb0; }
+
+  footer { text-align: center; font-size: 0.72em; color: #a0aec0; margin-top: 24px; }
+</style>
 </head>
 <body>
-<div class="container">
-    <h2>AC Decision Support</h2>
-    <label><input type="checkbox" id="c1"> Protected Airway</label><br>
-    <label><input type="checkbox" id="c2"> No signs of bowel obstruction</label>
-    <select id="poisonSelect" onchange="updateFormulations()"><option>Select Drug</option></select>
-    <select id="formSelect"><option>Select Formulation</option></select>
-    <input type="number" id="doseInput" placeholder="Numeric Dose (e.g. 200)">
-    <input type="number" id="hours" step="0.1" placeholder="Hours from ingestion">
-    <button onclick="calculate()">Get Recommendation</button>
-    <div id="result"></div>
+
+<header>
+  <h1>🏥 Activated Charcoal Decision Support</h1>
+  <p>Clinical decision aid for AC administration in acute poisoning</p>
+</header>
+<div class="warning-banner">
+  ⚠️ FOR CLINICAL USE BY TRAINED PROFESSIONALS ONLY — Always consult Poison Control
 </div>
 
+<div class="container">
+
+  <!-- STEP 1: Safety Checks -->
+  <div class="card">
+    <h2><span class="badge">1</span> Mandatory Safety Checks</h2>
+    <div class="safety-row" id="row-airway">
+      <input type="checkbox" id="chk-airway" onchange="updateRow('airway')">
+      <label for="chk-airway">
+        Protected Airway
+        <div class="sub">Patient is able to protect their own airway or airway is secured</div>
+      </label>
+    </div>
+    <div class="safety-row" id="row-bowel">
+      <input type="checkbox" id="chk-bowel" onchange="updateRow('bowel')">
+      <label for="chk-bowel">
+        No Signs of Bowel Obstruction / Perforation
+        <div class="sub">No clinical or radiological evidence of obstruction or perforation</div>
+      </label>
+    </div>
+  </div>
+
+  <!-- STEP 2: Drug Selection -->
+  <div class="card">
+    <h2><span class="badge">2</span> Drug / Poison</h2>
+    <div class="field">
+      <label>Select Drug / Poison</label>
+      <select id="sel-drug" onchange="onDrugChange()">
+        <option value="">— Select a drug —</option>
+      </select>
+    </div>
+
+    <!-- STEP 3: Formulation -->
+    <div class="field" id="form-field" style="display:none;">
+      <label>Formulation</label>
+      <select id="sel-form" onchange="onFormChange()">
+        <option value="">— Select formulation —</option>
+      </select>
+    </div>
+
+    <div class="drug-info-bar" id="drug-info"></div>
+  </div>
+
+  <!-- STEP 4: Dose -->
+  <div class="card">
+    <h2><span class="badge">3</span> Dose &amp; Patient</h2>
+    <div class="dose-row">
+      <div class="field">
+        <label>Ingested Dose</label>
+        <input type="number" id="inp-dose" min="0" step="any" placeholder="Enter dose (leave blank = exceeds threshold)">
+      </div>
+      <div class="field">
+        <label>Unit</label>
+        <select id="sel-unit">
+          <option value="mg">mg</option>
+          <option value="mcg">microgram (µg)</option>
+          <option value="g">g</option>
+          <option value="mg/kg">mg/kg</option>
+          <option value="mcg/kg">µg/kg</option>
+          <option value="TD">TD (Therapeutic Doses)</option>
+          <option value="seeds">seeds</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Patient Weight (kg)</label>
+      <input type="number" id="inp-weight" min="1" step="0.1" placeholder="e.g. 70">
+    </div>
+    <div class="field">
+      <label>Hours Since Ingestion</label>
+      <input type="number" id="inp-hours" min="0" step="0.5" placeholder="e.g. 1.5">
+    </div>
+  </div>
+
+  <!-- Evaluate Button -->
+  <button class="btn-eval" onclick="runEvaluation()">⚡ Evaluate</button>
+  <button class="btn-reset" onclick="resetAll()">↺ Reset</button>
+
+  <!-- Result Panel -->
+  <div id="result-panel" class="card" style="margin-top:18px;">
+    <h2>📋 Result</h2>
+    <div id="result-safety"></div>
+    <div id="result-ac"></div>
+    <div id="result-adac"></div>
+  </div>
+
+</div>
+<footer>This tool is a clinical decision aid only. Not a substitute for clinical judgment. Version 1.0</footer>
+
 <script>
-// Numeric data generated for clinical reliability
-const data = [{"Poison": "Acetaminophen", "Threshold": 200.0, "Formulation": "IR", "Strong": [0.0, 2.0], "Weak": [2.0, 4.0], "ADAC": 350.0}, {"Poison": "Acetaminophen", "Threshold": 200.0, "Formulation": "MR", "Strong": [0.0, 5.0], "Weak": [5.0, 6.0], "ADAC": 300.0}, {"Poison": "Carbamazepine", "Threshold": 25.0, "Formulation": "IR", "Strong": [0.0, 2.0], "Weak": [2.0, 3.0], "ADAC": 50.0}, {"Poison": "Carbamazepine", "Threshold": 25.0, "Formulation": "MR", "Strong": [0.0, 3.0], "Weak": [3.0, 4.0], "ADAC": 40.0}, {"Poison": "Colchicine", "Threshold": 0.4, "Formulation": "Any", "Strong": [0.0, 3.0], "Weak": [3.0, 4.0], "ADAC": 0.7}, {"Poison": "Paraquat", "Threshold": 5.0, "Formulation": "Any", "Strong": [0.0, 3.0], "Weak": [3.0, 4.0], "ADAC": 40.0}, {"Poison": "Phenobarbital", "Threshold": 20.0, "Formulation": "Any", "Strong": [0.0, 1.0], "Weak": [1.0, 3.0], "ADAC": 50.0}, {"Poison": "Salicylates", "Threshold": 200.0, "Formulation": "IR", "Strong": [0.0, 2.0], "Weak": [2.0, 4.0], "ADAC": 500.0}, {"Poison": "Salicylates", "Threshold": 200.0, "Formulation": "MR", "Strong": [0.0, 3.0], "Weak": [3.0, 5.0], "ADAC": 350.0}, {"Poison": "Theophylline", "Threshold": 20.0, "Formulation": "IR", "Strong": [0.0, 2.0], "Weak": [2.0, 3.0], "ADAC": 40.0}, {"Poison": "Theophylline", "Threshold": 20.0, "Formulation": "MR", "Strong": [0.0, 3.0], "Weak": [3.0, 6.0], "ADAC": 50.0}, {"Poison": "Valproic Acid", "Threshold": 200.0, "Formulation": "IR", "Strong": [0.0, 1.0], "Weak": [0.0, 3.0], "ADAC": 400.0}, {"Poison": "Valproic Acid", "Threshold": 200.0, "Formulation": "MR", "Strong": [0.0, 1.0], "Weak": [0.0, 4.0], "ADAC": 400.0}];
+// ─────────────────────────────────────────────
+// DATA — All 78 rows from the Excel file
+// Fields: drug, minDose, formulation, strongHours, weakHours, adacGrade, adacThreshold
+// ─────────────────────────────────────────────
+const RAW_DATA = [
+  { drug:"Acetaminophen",                                      minDose:"200 mg/kg",                              form:"IR",    strong:"0-2",              weak:"2-4",                adacGrade:null,                    adac:"350mg/kg" },
+  { drug:"Acetaminophen",                                      minDose:"200 mg/kg",                              form:"MR",    strong:"0-5",              weak:"5-6",                adacGrade:null,                    adac:"300mg/kg" },
+  { drug:"Alcohols (Ethanol/Methanol/EG)",                     minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended (C/D)", adac:"Not Recommended (D)" },
+  { drug:"Antidysrhythmics (Type I/III)",                      minDose:"5 TD",                                   form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Antidysrhythmics (Type I/III)",                      minDose:"5 TD",                                   form:"MR",    strong:"0-1",              weak:"1-6",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Arsenic",                                            minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended" },
+  { drug:"Benzodiazepines",                                    minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Atenolol",             minDose:"6 mg/kg",                                form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Atenolol",             minDose:"6 mg/kg",                                form:"MR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Nadolol",              minDose:"5 mg/kg",                                form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Nadolol",              minDose:"5 mg/kg",                                form:"MR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Propanolol",           minDose:"5 mg/kg",                                form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Propanolol",           minDose:"5 mg/kg",                                form:"MR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Sotalol",              minDose:"6 mg/kg",                                form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Beta-adrenergic antagonists - Sotalol",              minDose:"6 mg/kg",                                form:"MR",    strong:"0-1",              weak:"1-3",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Bupropion",                                          minDose:"20 mg/kg",                               form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Bupropion",                                          minDose:"20 mg/kg",                               form:"MR",    strong:"0-1",              weak:"1-3",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Caesium",                                            minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended (D)",   adac:"Not Recommended (D)" },
+  { drug:"Calcium-channel blockers - Amlodipine",              minDose:"5 TD",                                   form:"IR",    strong:"0-2",              weak:"Not Recommended",    adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Calcium-channel blockers - Diltiazem",               minDose:"3 TD",                                   form:"IR",    strong:"0-2",              weak:"2-3",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Calcium-channel blockers - Diltiazem",               minDose:"3 TD",                                   form:"MR",    strong:"0-3",              weak:"3-5",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Calcium-channel blockers - Verapamil",               minDose:"3 TD",                                   form:"IR",    strong:"0-2",              weak:"2-3",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Calcium-channel blockers - Verapamil",               minDose:"3 TD",                                   form:"MR",    strong:"0-3",              weak:"3-5",                adacGrade:null,                    adac:"5TD Weak" },
+  { drug:"Carbamazepine",                                      minDose:"25 mg/kg",                               form:"IR",    strong:"0-2",              weak:"2-3",                adacGrade:null,                    adac:">50mg/kg Strong" },
+  { drug:"Carbamazepine",                                      minDose:"25 mg/kg",                               form:"MR",    strong:"0-3",              weak:"3-4",                adacGrade:null,                    adac:">40mg/kg Weak" },
+  { drug:"Cardiac glycosides (Digoxin)",                       minDose:"75 µg/kg",                               form:"Any",   strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Cardiac glycosides (Oleander)",                      minDose:"4 seeds",                                form:"Any",   strong:"0-1",              weak:"1-3",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Chloroquine",                                        minDose:"35 mg/kg",                               form:"Any",   strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Cocaine",                                            minDose:"5 mg/kg",                                form:"Any",   strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Colchicine",                                         minDose:"0.4 mg/kg",                              form:"Any",   strong:"0-3",              weak:"3-4",                adacGrade:null,                    adac:"0.7mg/kg Weak" },
+  { drug:"Copper",                                             minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended (D)",   adac:"Not Recommended (D)" },
+  { drug:"Cyanide",                                            minDose:"2 mg/kg",                                form:"Any",   strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Dapsone",                                            minDose:"6 mg/kg",                                form:"Any",   strong:"0-2",              weak:"2-3",                adacGrade:null,                    adac:"Suggest (D)" },
+  { drug:"Diphenhydramine",                                    minDose:"15 mg/kg",                               form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Diphenhydramine",                                    minDose:"15 mg/kg",                               form:"MR",    strong:"0-3",              weak:"3-4",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Disopyramide",                                       minDose:"1 g",                                    form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Disopyramide",                                       minDose:"1 g",                                    form:"MR",    strong:"0-2",              weak:null,                 adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Ethanol",                                            minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended (C/D)", adac:"Not Recommended (D)" },
+  { drug:"Ethylen Glycol",                                     minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended (C/D)", adac:"Not Recommended (D)" },
+  { drug:"Factor Xa Inhibitors",                               minDose:"40 mg (Apix) / 80 mg (Riva)",            form:"Any",   strong:"0-0.5",            weak:"0.5-4",              adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Ibuprofen",                                          minDose:"250 mg/kg",                              form:"Any",   strong:null,               weak:"0-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Iron",                                               minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended (D)" },
+  { drug:"Isoniazid",                                          minDose:"40 mg/kg",                               form:"Any",   strong:"0-1",              weak:"1-2",                adacGrade:"Suggest up to 1h (D)",  adac:"Not Recommended (D)" },
+  { drug:"Lamotrigine",                                        minDose:"30 mg/kg",                               form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:"Suggest up to 2h (D)",  adac:"Not Recommended (D)" },
+  { drug:"Lamotrigine",                                        minDose:"30 mg/kg",                               form:"MR",    strong:"0-1",              weak:"1-4",                adacGrade:"Suggest up to 2h (D)",  adac:"Not Recommended (D)" },
+  { drug:"Lead",                                               minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended (D)" },
+  { drug:"Lithium",                                            minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended (D)" },
+  { drug:"Mercury",                                            minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended (D)" },
+  { drug:"Metformin",                                          minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended (D)" },
+  { drug:"Methotrexate",                                       minDose:"10 mg/kg",                               form:"Any",   strong:null,               weak:"0-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Methanol",                                           minDose:"Any dose",                               form:"Any",   strong:"Not Recommended",  weak:"Not Recommended",    adacGrade:"Not Recommended",       adac:"Not Recommended (D)" },
+  { drug:"Moclobemide",                                        minDose:"50 mg/kg",                               form:"IR",    strong:null,               weak:"0-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Moclobemide",                                        minDose:"50 mg/kg",                               form:"MR",    strong:null,               weak:"0-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Opioids",                                            minDose:"5 TD",                                   form:"IR",    strong:null,               weak:"0-1",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Opioids",                                            minDose:"5 TD",                                   form:"MR",    strong:null,               weak:"0-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Organophosphates",                                   minDose:"Any dose",                               form:"Any",   strong:null,               weak:"0-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Paraquat",                                           minDose:"5 mg/kg",                                form:"Any",   strong:"0-3",              weak:"3-4",                adacGrade:null,                    adac:">40mg/kg Weak" },
+  { drug:"Phenobarbital",                                      minDose:"20 mg/kg",                               form:"Any",   strong:"0-1",              weak:"1-3",                adacGrade:null,                    adac:">50mg/kg Weak" },
+  { drug:"Phenytoin",                                          minDose:"40 mg/kg",                               form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Phenytoin",                                          minDose:"40 mg/kg",                               form:"MR",    strong:"0-3",              weak:"3-4",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Quinidine",                                          minDose:"750 mg",                                 form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Quinidine",                                          minDose:"750 mg",                                 form:"MR",    strong:"0-3",              weak:"3-4",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Quinine",                                            minDose:"20 mg/kg",                               form:"IR",    strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Quinine",                                            minDose:"750 mg",                                 form:"MR",    strong:"0-3",              weak:"3-4",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Salicylates",                                        minDose:"200 mg/kg",                              form:"IR",    strong:"0-2",              weak:"2-4",                adacGrade:null,                    adac:">500mg/kg Strong" },
+  { drug:"Salicylates",                                        minDose:"200 mg/kg",                              form:"MR",    strong:"0-3",              weak:"3-5",                adacGrade:null,                    adac:">350mg/kg Strong" },
+  { drug:"SSRI - Selective Serotonin Reuptake Inhibitors",     minDose:"15 TD",                                  form:"IR",    strong:"0-0.5",            weak:"0.5-2",              adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"SSRI - Selective Serotonin Reuptake Inhibitors",     minDose:"15 TD",                                  form:"MR",    strong:"0-1",              weak:"1-4",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Sulfonylureas",                                      minDose:"5 TD",                                   form:"Any",   strong:"0-1",              weak:"1-2",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Thallium",                                           minDose:"10 mg/kg",                               form:"Any",   strong:null,               weak:"0-1",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Theophylline",                                       minDose:"20 mg/kg",                               form:"IR",    strong:"0-2",              weak:"2-3",                adacGrade:null,                    adac:">40mg/kg Weak" },
+  { drug:"Theophylline",                                       minDose:"20 mg/kg",                               form:"MR",    strong:"0-3",              weak:"3-6",                adacGrade:null,                    adac:">50mg/kg Weak" },
+  { drug:"Tricyclic Antidepressants",                          minDose:"10 mg/kg",                               form:"Any",   strong:"0-2",              weak:"2-3",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Valproic Acid",                                      minDose:"200 mg/kg",                              form:"IR",    strong:"0-1",              weak:"0-3",                adacGrade:null,                    adac:">400mg/kg" },
+  { drug:"Valproic Acid",                                      minDose:"200 mg/kg",                              form:"MR",    strong:"0-1",              weak:"0-4",                adacGrade:null,                    adac:">400mg/kg" },
+  { drug:"Venlafaxine",                                        minDose:"25 mg/kg",                               form:"IR",    strong:"0-0.5",            weak:"0.5-2",              adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Venlafaxine",                                        minDose:"25 mg/kg",                               form:"MR",    strong:"0-1",              weak:"1-3",                adacGrade:null,                    adac:"Not Recommended (D)" },
+  { drug:"Warfarin",                                           minDose:"0.7 mg/kg",                              form:"Any",   strong:"0-1",              weak:null,                 adacGrade:null,                    adac:"Not Recommended (D)" },
+];
 
-// [Note: I have included a subset. Add all 78 objects generated by the logic here]
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
 
-const pSelect = document.getElementById('poisonSelect');
-[...new Set(data.map(d => d.Poison))].forEach(p => {
-    let opt = document.createElement('option'); opt.value = p; opt.innerHTML = p;
-    pSelect.appendChild(opt);
-});
-
-function updateFormulations() {
-    const fSelect = document.getElementById('formSelect');
-    fSelect.innerHTML = '<option>Select Formulation</option>';
-    data.filter(d => d.Poison === pSelect.value).forEach(d => {
-        let opt = document.createElement('option'); opt.value = JSON.stringify(d); opt.innerHTML = d.Formulation;
-        fSelect.appendChild(opt);
-    });
+// Parse hour range like "0-2", "0-0.5" → {lo, hi}
+function parseHourRange(s) {
+  if (!s || typeof s !== "string") return null;
+  s = s.trim();
+  if (s.toLowerCase().includes("not recommended")) return null;
+  const m = s.match(/^([\d.]+)\s*-\s*([\d.]+)$/);
+  if (m) return { lo: parseFloat(m[1]), hi: parseFloat(m[2]) };
+  return null;
 }
 
-function calculate() {
-    const res = document.getElementById('result');
-    if(!document.getElementById('c1').checked || !document.getElementById('c2').checked) {
-        res.innerHTML = "Not recommended (Safety check fail)"; res.style.background = "#ffcccc";
+// Parse a dose string and convert to a standard comparable value (mg or mg/kg)
+// Returns { value, unit } for display
+function parseThreshold(str, weightKg) {
+  if (!str || typeof str !== "string") return null;
+  str = str.trim();
+
+  const lower = str.toLowerCase();
+  if (lower.includes("not recommended") || lower === "any dose") return { special: lower.includes("not recommended") ? "not_rec" : "any_dose" };
+
+  // Seeds
+  const seedsM = str.match(/([\d.]+)\s*seeds?/i);
+  if (seedsM) return { value: parseFloat(seedsM[1]), unit: "seeds", raw: str };
+
+  // µg/kg or mcg/kg
+  const ugkgM = str.match(/([\d.]+)\s*(µg\/kg|mcg\/kg|ug\/kg)/i);
+  if (ugkgM) return { value: parseFloat(ugkgM[1]), unit: "mcg/kg", raw: str };
+
+  // mg/kg
+  const mgkgM = str.match(/([\d.]+)\s*mg\/kg/i);
+  if (mgkgM) return { value: parseFloat(mgkgM[1]), unit: "mg/kg", raw: str };
+
+  // g
+  const gM = str.match(/([\d.]+)\s*g\b/i);
+  if (gM) return { value: parseFloat(gM[1]) * 1000, unit: "mg", raw: str };
+
+  // mg
+  const mgM = str.match(/([\d.]+)\s*mg/i);
+  if (mgM) return { value: parseFloat(mgM[1]), unit: "mg", raw: str };
+
+  // TD
+  const tdM = str.match(/([\d.]+)\s*TD/i);
+  if (tdM) return { value: parseFloat(tdM[1]), unit: "TD", raw: str };
+
+  return null;
+}
+
+// Convert user's entered dose to threshold's unit, returns mg equivalent or comparable value
+// Returns null if can't compare
+function normalizeDose(doseVal, doseUnit, threshObj, weightKg) {
+  if (!threshObj || threshObj.special) return null;
+  const tu = threshObj.unit;
+  const dv = parseFloat(doseVal);
+  if (isNaN(dv)) return null;
+
+  // same unit
+  if (doseUnit === tu) return { entered: dv, threshold: threshObj.value };
+
+  // seeds vs seeds
+  if (tu === "seeds" && doseUnit === "seeds") return { entered: dv, threshold: threshObj.value };
+
+  // TD vs TD
+  if (tu === "TD" && doseUnit === "TD") return { entered: dv, threshold: threshObj.value };
+
+  const w = parseFloat(weightKg);
+
+  // mg/kg threshold: user entered mg → divide by weight
+  if (tu === "mg/kg" && doseUnit === "mg" && w > 0) return { entered: dv / w, threshold: threshObj.value };
+  // mg/kg threshold: user entered g → convert to mg then divide
+  if (tu === "mg/kg" && doseUnit === "g" && w > 0) return { entered: (dv * 1000) / w, threshold: threshObj.value };
+  // mg/kg threshold: user entered mg/kg
+  if (tu === "mg/kg" && doseUnit === "mg/kg") return { entered: dv, threshold: threshObj.value };
+
+  // mcg/kg threshold: user entered mcg → divide by weight
+  if (tu === "mcg/kg" && doseUnit === "mcg" && w > 0) return { entered: dv / w, threshold: threshObj.value };
+  if (tu === "mcg/kg" && doseUnit === "mcg/kg") return { entered: dv, threshold: threshObj.value };
+
+  // mg threshold: user entered mg/kg → multiply by weight
+  if (tu === "mg" && doseUnit === "mg/kg" && w > 0) return { entered: dv * w, threshold: threshObj.value };
+  if (tu === "mg" && doseUnit === "g") return { entered: dv * 1000, threshold: threshObj.value };
+  if (tu === "mg" && doseUnit === "mg") return { entered: dv, threshold: threshObj.value };
+
+  return null; // incompatible units
+}
+
+// Parse ADAC threshold (column G) into a comparable object
+// Returns { value, unit, grade, str }
+function parseAdacThreshold(str) {
+  if (!str || typeof str !== "string") return null;
+  str = str.trim();
+  const lower = str.toLowerCase();
+  if (lower.includes("not recommended")) return { notRec: true, grade: extractGrade(str) };
+  if (lower === "suggest (d)") return { suggest: true, grade: "D" };
+
+  // e.g. ">50mg/kg Strong", ">400mg/kg", "0.7mg/kg Weak", "5TD Weak", ">350mg/kg Strong"
+  const gradeMatch = str.match(/(Strong|Weak)/i);
+  const grade = gradeMatch ? gradeMatch[1] : null;
+
+  const mgkgM = str.match(/([\d.]+)\s*mg\/kg/i);
+  if (mgkgM) return { value: parseFloat(mgkgM[1]), unit: "mg/kg", grade, raw: str };
+
+  const mgkgKM = str.match(/([\d.]+)\s*mg\/Kg/i);
+  if (mgkgKM) return { value: parseFloat(mgkgKM[1]), unit: "mg/kg", grade, raw: str };
+
+  const tdM = str.match(/([\d.]+)\s*TD/i);
+  if (tdM) return { value: parseFloat(tdM[1]), unit: "TD", grade, raw: str };
+
+  const mgM = str.match(/([\d.]+)\s*mg/i);
+  if (mgM) return { value: parseFloat(mgM[1]), unit: "mg", grade, raw: str };
+
+  return null;
+}
+
+function extractGrade(str) {
+  if (!str) return null;
+  const m = str.match(/\(([A-D])\)/);
+  return m ? m[1] : null;
+}
+
+// ─────────────────────────────────────────────
+// UI INIT
+// ─────────────────────────────────────────────
+function updateRow(id) {
+  const chk = document.getElementById("chk-" + id);
+  const row = document.getElementById("row-" + id);
+  row.classList.toggle("checked", chk.checked);
+}
+
+// Build unique drug list
+const drugNames = [...new Set(RAW_DATA.map(r => r.drug))].sort();
+
+window.onload = function () {
+  const sel = document.getElementById("sel-drug");
+  drugNames.forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+};
+
+function onDrugChange() {
+  const drug = document.getElementById("sel-drug").value;
+  const formField = document.getElementById("form-field");
+  const selForm = document.getElementById("sel-form");
+  document.getElementById("drug-info").style.display = "none";
+  document.getElementById("result-panel").style.display = "none";
+
+  if (!drug) { formField.style.display = "none"; return; }
+
+  const rows = RAW_DATA.filter(r => r.drug === drug);
+  const forms = [...new Set(rows.map(r => r.form))];
+
+  selForm.innerHTML = '<option value="">— Select formulation —</option>';
+  if (forms.length === 1 && (forms[0] === "Any" || forms[0] === "IR/MR")) {
+    selForm.innerHTML = `<option value="${forms[0]}">${forms[0]}</option>`;
+    formField.style.display = "block";
+    selForm.value = forms[0];
+    onFormChange();
+  } else {
+    forms.forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      selForm.appendChild(opt);
+    });
+    formField.style.display = "block";
+  }
+}
+
+function onFormChange() {
+  const drug = document.getElementById("sel-drug").value;
+  const form = document.getElementById("sel-form").value;
+  document.getElementById("result-panel").style.display = "none";
+  if (!drug || !form) { document.getElementById("drug-info").style.display = "none"; return; }
+
+  const row = RAW_DATA.find(r => r.drug === drug && r.form === form);
+  if (!row) return;
+
+  const infoBar = document.getElementById("drug-info");
+  infoBar.style.display = "block";
+  infoBar.innerHTML = `<span>Threshold:</span> ${row.minDose} &nbsp;|&nbsp; <span>Formulation:</span> ${row.form}`;
+}
+
+// ─────────────────────────────────────────────
+// MAIN EVALUATE LOGIC
+// ─────────────────────────────────────────────
+function runEvaluation() {
+  const airway = document.getElementById("chk-airway").checked;
+  const bowel  = document.getElementById("chk-bowel").checked;
+  const drug   = document.getElementById("sel-drug").value;
+  const form   = document.getElementById("sel-form").value;
+  const doseRaw = document.getElementById("inp-dose").value.trim();
+  const doseUnit = document.getElementById("sel-unit").value;
+  const weight  = document.getElementById("inp-weight").value.trim();
+  const hoursRaw = document.getElementById("inp-hours").value.trim();
+
+  const panel = document.getElementById("result-panel");
+  const resSafety = document.getElementById("result-safety");
+  const resAC     = document.getElementById("result-ac");
+  const resADAC   = document.getElementById("result-adac");
+
+  panel.style.display = "block";
+  resSafety.innerHTML = "";
+  resAC.innerHTML     = "";
+  resADAC.innerHTML   = "";
+
+  // ── STEP 1: Safety checks ──
+  if (!airway || !bowel) {
+    const missing = [];
+    if (!airway) missing.push("Protected Airway");
+    if (!bowel)  missing.push("No Signs of Bowel Obstruction/Perforation");
+    resSafety.innerHTML = resultBox("not-rec", "⛔ Safety Check Failed",
+      "Activated Charcoal: <strong>NOT RECOMMENDED</strong>",
+      "Required condition(s) not confirmed: " + missing.join(", "));
+    return;
+  }
+
+  // ── Drug must be selected ──
+  if (!drug || !form) {
+    resSafety.innerHTML = resultBox("not-rec", "⚠️ Input Required", "Please select a drug and formulation.", "");
+    return;
+  }
+
+  const row = RAW_DATA.find(r => r.drug === drug && r.form === form);
+  if (!row) {
+    resSafety.innerHTML = resultBox("not-rec", "⚠️ Data Error", "Could not find data for selected combination.", "");
+    return;
+  }
+
+  const weightKg = parseFloat(weight);
+  const hours    = hoursRaw !== "" ? parseFloat(hoursRaw) : null;
+
+  // ── STEP 4: Dose threshold check ──
+  const threshObj = parseThreshold(row.minDose, weightKg);
+  let aboveThreshold = false;
+  let threshNote = "";
+
+  if (threshObj && threshObj.special === "not_rec") {
+    // Drug is never recommended regardless of dose
+    resAC.innerHTML = resultBox("not-rec", "⛔ Activated Charcoal",
+      "NOT RECOMMENDED",
+      `This agent (${drug}) is not an indication for activated charcoal regardless of dose.`);
+    resADAC.innerHTML = resultBox("adac-no", "Additional Dose AC", "Not Recommended", "");
+    return;
+  }
+
+  if (threshObj && threshObj.special === "any_dose") {
+    // Any dose qualifies — proceed without threshold check
+    aboveThreshold = false;
+    threshNote = "Any dose qualifies for consideration.";
+  } else if (doseRaw === "") {
+    // No dose entered → treat as exceeding threshold
+    aboveThreshold = true;
+    threshNote = "No dose entered — treated as exceeding the threshold.";
+  } else {
+    // Try to normalize and compare
+    const cmp = normalizeDose(doseRaw, doseUnit, threshObj, weightKg);
+    if (cmp === null) {
+      // Incompatible units — can't compare, warn but allow
+      threshNote = `Unable to compare dose units (entered: ${doseUnit}, threshold: ${threshObj ? threshObj.unit : "?"}) — verify manually. Threshold: ${row.minDose}.`;
+      aboveThreshold = false; // let it proceed with warning
     } else {
-        const drug = JSON.parse(document.getElementById('formSelect').value);
-        const d = parseFloat(document.getElementById('doseInput').value);
-        const h = parseFloat(document.getElementById('hours').value);
-        
-        let msg = "Not Recommended";
-        if (d >= drug.Threshold) {
-            if (h >= drug.Strong[0] && h <= drug.Strong[1]) {
-                msg = "Recommended – Strong" + (d > drug.ADAC ? "<br>+ Add ADAC" : "");
-            } else if (h >= drug.Weak[0] && h <= drug.Weak[1]) {
-                msg = "Recommended – Weak" + (d > drug.ADAC ? "<br>+ Add ADAC" : "");
-            }
-        }
-        res.innerHTML = msg; res.style.background = (msg.includes("Recommended") ? "#ccffcc" : "#ffcccc");
+      if (cmp.entered < cmp.threshold) {
+        aboveThreshold = true;
+        threshNote = `Dose ${doseRaw} ${doseUnit} is below the threshold (${row.minDose}). AC not indicated based on dose.`;
+      } else {
+        threshNote = `Dose ${doseRaw} ${doseUnit} meets or exceeds threshold (${row.minDose}).`;
+      }
     }
-    res.style.display = "block";
+  }
+
+  if (aboveThreshold) {
+    resAC.innerHTML = resultBox("not-rec", "⛔ Activated Charcoal",
+      "NOT RECOMMENDED",
+      threshNote);
+    resADAC.innerHTML = resultBox("adac-no", "Additional Dose AC", "Not Recommended", "");
+    return;
+  }
+
+  // ── Hours check ──
+  if (hours === null || isNaN(hours)) {
+    resSafety.innerHTML = resultBox("not-rec", "⚠️ Input Required",
+      "Please enter hours since ingestion.", "");
+    return;
+  }
+
+  // ── STEPS 5 & 6: Time window check ──
+  const strongRange = parseHourRange(row.strong);
+  const weakRange   = parseHourRange(row.weak);
+
+  let acResult = "not_rec";
+  let acLabel  = "";
+  let acClass  = "not-rec";
+
+  // Check if the col itself says "Not Recommended" even without range
+  const strongText = (row.strong || "").trim().toLowerCase();
+  const weakText   = (row.weak   || "").trim().toLowerCase();
+
+  if (strongRange && hours >= strongRange.lo && hours <= strongRange.hi) {
+    acResult = "strong";
+    acLabel  = "✅ Activated Charcoal Recommended – STRONG";
+    acClass  = "strong";
+  } else if (weakRange && hours >= weakRange.lo && hours <= weakRange.hi) {
+    acResult = "weak";
+    acLabel  = "⚠️ Activated Charcoal Recommended – WEAK";
+    acClass  = "weak";
+  } else {
+    acResult = "not_rec";
+    acLabel  = "⛔ Activated Charcoal NOT RECOMMENDED";
+    acClass  = "not-rec";
+  }
+
+  const timeDetail = `Hours since ingestion: ${hours}h | Strong window: ${row.strong || "—"} | Weak window: ${row.weak || "—"}`;
+  resAC.innerHTML = resultBox(acClass, acResult === "strong" ? "Strong Recommendation" : acResult === "weak" ? "Weak Recommendation" : "Not Recommended",
+    acLabel, timeDetail + (threshNote ? " | " + threshNote : ""));
+
+  // ── STEPS 7 & 8: ADAC check ──
+  if (acResult === "strong" || acResult === "weak") {
+    const adacObj = parseAdacThreshold(row.adac);
+
+    if (!adacObj) {
+      resADAC.innerHTML = resultBox("adac-no", "Additional Dose Activated Charcoal", "Not Recommended", "No ADAC threshold data.");
+    } else if (adacObj.notRec) {
+      resADAC.innerHTML = resultBox("adac-no", "Additional Dose Activated Charcoal",
+        `Not Recommended (Grade ${adacObj.grade || "D"})`, row.adac);
+    } else if (adacObj.suggest) {
+      // Dapsone has "Suggest (D)"
+      resADAC.innerHTML = resultBox("adac-yes", "Additional Dose Activated Charcoal",
+        "Suggested — Grade D", row.adac);
+    } else {
+      // Compare entered dose against ADAC threshold
+      const adacCmp = normalizeDose(doseRaw, doseUnit, adacObj, weightKg);
+      if (doseRaw === "" || adacCmp === null) {
+        resADAC.innerHTML = resultBox("adac-no", "Additional Dose Activated Charcoal",
+          "Not Recommended", "Could not compare dose against ADAC threshold (" + row.adac + ") — verify manually.");
+      } else if (adacCmp.entered >= adacCmp.threshold) {
+        const grade = adacObj.grade || "";
+        resADAC.innerHTML = resultBox("adac-yes", "Additional Dose Activated Charcoal",
+          `✅ Recommended${grade ? " – " + grade + " (Strength of recommendation)" : ""}`,
+          `Dose ${doseRaw} ${doseUnit} exceeds ADAC threshold: ${row.adac}`);
+      } else {
+        resADAC.innerHTML = resultBox("adac-no", "Additional Dose Activated Charcoal",
+          "Not Recommended",
+          `Dose ${doseRaw} ${doseUnit} is below ADAC threshold: ${row.adac}`);
+      }
+    }
+  } else {
+    resADAC.innerHTML = resultBox("adac-no", "Additional Dose Activated Charcoal",
+      "Not Applicable", "AC is not recommended; ADAC assessment not applicable.");
+  }
+}
+
+function resultBox(cls, label, value, detail) {
+  return `<div class="result-box ${cls}">
+    <div class="label">${label}</div>
+    <div class="value">${value}</div>
+    ${detail ? `<div class="detail">${detail}</div>` : ""}
+  </div>`;
+}
+
+function resetAll() {
+  document.getElementById("chk-airway").checked = false;
+  document.getElementById("chk-bowel").checked  = false;
+  updateRow("airway");
+  updateRow("bowel");
+  document.getElementById("sel-drug").value  = "";
+  document.getElementById("sel-form").innerHTML = '<option value="">— Select formulation —</option>';
+  document.getElementById("form-field").style.display = "none";
+  document.getElementById("drug-info").style.display = "none";
+  document.getElementById("inp-dose").value   = "";
+  document.getElementById("inp-weight").value = "";
+  document.getElementById("inp-hours").value  = "";
+  document.getElementById("sel-unit").value   = "mg";
+  document.getElementById("result-panel").style.display = "none";
 }
 </script>
 </body>
